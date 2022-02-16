@@ -23,11 +23,13 @@
  */
 package com.lb.video_trimmer_library.utils
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.media.*
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.util.SparseIntArray
 import androidx.annotation.NonNull
 import androidx.annotation.WorkerThread
@@ -54,31 +56,38 @@ object TrimVideoUtils {
         outputTrimmedVideoFile.parentFile.mkdirs()
         outputTrimmedVideoFile.delete()
         var succeeded = false
-        if (startMs <= 0L && endMs >= durationInMs) {
+        var isTooShort = false
+        /*if (startMs <= 0L && endMs >= durationInMs) {
 //            Log.d("AppLog", "trimmed file is the entire video, so just copy it")
             context.contentResolver.openInputStream(inputVideoUri).use {
                 it?.copyTo(FileOutputStream(outputTrimmedVideoFile))
                 succeeded = it != null && outputTrimmedVideoFile.exists()
             }
 //            Log.d("AppLog", "succeeded copying?$succeeded")
-        }
-        if (!succeeded) {
+        }*/
+        if (startMs == 0L && durationInMs < 1200) {
+            isTooShort = true
+            Log.d("VideoTrimmer", "Video too short")
+        } else {
+            if (!succeeded) {
 //            Log.d("AppLog", "trying to trim using mp4parser...")
-            try {
-                val inputFilePath = FileUtils.getPath(context, inputVideoUri)
-                succeeded = genVideoUsingMp4Parser(inputFilePath, outputTrimmedVideoFile, startMs, endMs)
-            } catch (e: Exception) {
+                try {
+                    val inputFilePath = FileUtils.getPath(context, inputVideoUri)
+                    succeeded = genVideoUsingMp4Parser(inputFilePath, outputTrimmedVideoFile, startMs, endMs)
+                    Log.d("VideoTrimmer", "succeeded using mp4parser? $succeeded")
+                } catch (e: Exception) {
+                    Log.w("Error", "parsing with mp4Parser. ${e.message}")
+                }
             }
-//            Log.d("AppLog", "succeeded using mp4parser? $succeeded")
-        }
-        if (!succeeded) {
+            if (!succeeded) {
 //            Log.d("AppLog", "trying to trim using Android framework API...")
-            succeeded = genVideoUsingMuxer(context, inputVideoUri, outputTrimmedVideoFile.absolutePath, startMs, endMs, true, true)
-//            Log.d("AppLog", "succeeded trimming using Android framework API?$succeeded")
+                succeeded = genVideoUsingMuxer(context, inputVideoUri, outputTrimmedVideoFile.absolutePath, startMs, endMs, true, true)
+                Log.d("VideoTrimmer", "succeeded trimming using Muxer - Android framework API?$succeeded")
+            }
         }
         Handler(Looper.getMainLooper()).post {
             //            callback.onFinishedTrimming(if (succeeded) Uri.parse(outputTrimmedVideoFile.toString()) else null)
-            callback.onFinishedTrimming(if (succeeded) Uri.parse(outputTrimmedVideoFile.absolutePath) else null)
+            callback.onFinishedTrimming(if (succeeded) Uri.parse(outputTrimmedVideoFile.absolutePath) else null, isTooShort)
         }
     }
 
@@ -148,6 +157,7 @@ object TrimVideoUtils {
     }
 
     //https://stackoverflow.com/a/44653626/878126 https://android.googlesource.com/platform/packages/apps/Gallery2/+/634248d/src/com/android/gallery3d/app/VideoUtils.java
+    @SuppressLint("WrongConstant")
     @JvmStatic
     @WorkerThread
     private fun genVideoUsingMuxer(context: Context, uri: Uri, dstPath: String, startMs: Long, endMs: Long, useAudio: Boolean, useVideo: Boolean): Boolean {
@@ -167,9 +177,9 @@ object TrimVideoUtils {
                 val format = extractor.getTrackFormat(i)
                 val mime = format.getString(MediaFormat.KEY_MIME)
                 var selectCurrentTrack = false
-                if (mime.startsWith("audio/") && useAudio) {
+                if (mime?.startsWith("audio/") == true && useAudio) {
                     selectCurrentTrack = true
-                } else if (mime.startsWith("video/") && useVideo) {
+                } else if (mime?.startsWith("video/") == true && useVideo) {
                     selectCurrentTrack = true
                 }
                 if (selectCurrentTrack) {

@@ -40,10 +40,11 @@ class TrimmerActivity : AppCompatActivity(), VideoTrimmingListener {
         trimmingProgressView.visibility = View.VISIBLE
     }
 
-    override fun onFinishedTrimming(uri: Uri?) {
+    override fun onFinishedTrimming(uri: Uri?, tooShortError: Boolean) {
         trimmingProgressView.visibility = View.GONE
         if (uri == null) {
-            Toast.makeText(this@TrimmerActivity, "failed trimming", Toast.LENGTH_SHORT).show()
+            if (!tooShortError)
+                Toast.makeText(this@TrimmerActivity, "failed trimming", Toast.LENGTH_SHORT).show()
         } else {
             val msg = getString(R.string.video_saved_at, uri.path)
             Toast.makeText(this@TrimmerActivity, msg, Toast.LENGTH_SHORT).show()
