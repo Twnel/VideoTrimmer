@@ -1,6 +1,7 @@
 apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-android-extensions'
+apply plugin: 'maven-publish'
 android {
     compileSdkVersion 30
 
@@ -29,4 +30,18 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.0.2'
     implementation 'com.googlecode.mp4parser:isoparser:1.1.22'
 
+}
+
+afterEvaluate {
+    publishing {
+        publications {
+            release(MavenPublication) {
+                from components.release
+
+                groupId = 'com.github.Twnel'
+                artifactId = 'VideoTrimmerLib'
+                version = '7.0.0'
+            }
+        }
+    }
 }
